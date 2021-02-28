@@ -4,15 +4,16 @@ pipeline {
     registryCredential = 'docker-hub'
     dockerImage = ''
     }
-    agent none
+    agent {
+        docker {
+            image 'henre1989/docker_with_git'
+            args '-u root:root -v /var/lib/jenkins/workspace/wepapp:/tmp/' + ' -v /var/lib/jenkins/.ssh:/root/.ssh' + ' -v /var/run/docker.sock:/var/run/docker.sock' + ' -v /etc/passwd:/etc/passwd'
+
+
+        }
+    }
     stages {
         stage('git clone Dockerfile') {
-            agent {
-                docker {
-                    image 'henre1989/docker_with_git'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                        }
-                }
             steps {
                 script {
                     git 'https://github.com/henre1989/Dockerfile_java_app.git'
@@ -20,12 +21,6 @@ pipeline {
             }
         }
         stage('build app') {
-            agent {
-                docker {
-                    image 'henre1989/docker_with_git'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                        }
-                }
             steps {
                 script {
                     dockerImage = docker.build registry
@@ -33,12 +28,6 @@ pipeline {
             }
         }
         stage('images push') {
-            agent {
-                docker {
-                    image 'henre1989/docker_with_git'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                        }
-                }
             steps {
                 script {
                     docker.withRegistry( '', registryCredential ) {
@@ -49,14 +38,11 @@ pipeline {
         }
 
         stage('app run') {
-            agent {
-                label 'master'
-            }
             steps {
-                    sshagent (credentials: ['ssh_prod']) {
+                sshagent (credentials: ['ssh_prod']) {
                         sh "ssh -o StrictHostKeyChecking=no server1@10.166.0.20 docker run -d -p 8080:8080 henre1989/myapp"
                     }
-                }
+            }
         }
     }
 }
